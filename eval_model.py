@@ -10,8 +10,10 @@ from tqdm import tqdm
 import dataloader
 from visdom import Visdom
 from nltk.tokenize import word_tokenize
+from PyRouge.pyrouge import Rouge
 
 parser = argparse.ArgumentParser()
+r = Rouge()
 
 parser.add_argument("--train-file", dest="train_file", help="Path to train datafile", default='finished_files/train.bin', type=str)
 parser.add_argument("--test-file", dest="test_file", help="Path to test/eval datafile", default='finished_files/test.bin', type=str)
@@ -54,6 +56,11 @@ def displayOutput(all_summaries, article, abstract, article_oov, show_ground_tru
         try:
             generated_summary = ' '.join([dl.id2word[ind] if ind<=dl.vocabSize else article_oov[ind % dl.vocabSize - 1] for ind in summary])
             print 'GENERATED ABSTRACT #%d : \n' %(i+1), generated_summary
+            [precision, recall, f_score] = r.rouge_l([abstract], [generated_summary])
+            print("Precision(l) is :"+str(precision)+"\nRecall is :"+str(recall)+"\nF Score is :"+str(f_score))
+
+            [precision, recall, f_score] = r.rouge_2([abstract], [generated_summary])
+            print("Precision(2) is :"+str(precision)+"\nRecall is :"+str(recall)+"\nF Score is :"+str(f_score))
         except:
             print '^^^^^^error in index^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^', '\n vocab len :', dl.vocabSize
             print '\n OOV length', len(article_oov), '\n', [ind for ind in summary]
@@ -68,7 +75,7 @@ def displayOutput(all_summaries, article, abstract, article_oov, show_ground_tru
 #     print 'Saving Model to : ', opt.save_dir
 #     save_name = opt.save_dir + 'savedModel_E%d_%d.pth' % (dl.epoch, dl.iterInd)
 #     torch.save(save_dict, save_name)
-#     print '-' * 60  
+#     print '-' * 60
 #     return
 
 assert opt.trunc_vocab <= 50000, 'Invalid value for --truncate-vocab'
@@ -79,7 +86,7 @@ with open(opt.vocab_file) as f:
 vocab += ['<unk>', '<go>', '<end>', '<s>', '</s>']                                  # add special token to vocab to bring total count to 50k
 
 #Create an object of the Dataloader class.
-dl = dataloader.dataloader(opt.batchSize, None, vocab, opt.train_file, opt.test_file, 
+dl = dataloader.dataloader(opt.batchSize, None, vocab, opt.train_file, opt.test_file,
                           opt.max_article_size, opt.max_abstract_size, test_mode=True)
 
 
@@ -94,7 +101,7 @@ print 'Loading weights from file...might take a minute...'
 saved_file = torch.load(opt.load_model)
 net.load_state_dict(saved_file['model'])
 print '\n','*'*30, 'LOADED WEIGHTS FROM MODEL FILE : %s' %opt.load_model,'*'*30
-    
+
 ############################################################################################
 # Set model to eval mode
 ############################################################################################
@@ -118,7 +125,7 @@ for _ in range(opt.num_eval):
 
     _article = Variable(_article.cuda(), volatile=True)
     _extArticle = Variable(_extArticle.cuda(), volatile=True)
-    _revArticle = Variable(_revArticle.cuda(), volatile=True)    
+    _revArticle = Variable(_revArticle.cuda(), volatile=True)
     all_summaries = net((_article, _revArticle, _extArticle), max_article_oov, decode_flag=True)
 
     displayOutput(all_summaries, article_string, abs_string, article_oov, show_ground_truth=opt.print_ground_truth)
