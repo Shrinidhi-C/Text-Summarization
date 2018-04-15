@@ -370,7 +370,7 @@ class PointerAttentionDecoder(Module):
             # curr_beam_size <= self.beam_size due to pruning of beams that have terminated
             # adjust enc_states and init_state accordingly
             curr_beam_size = _input.size(0)
-            print(curr_beam_size)
+            # print(curr_beam_size)
             beam_enc_states = enc_states.expand(curr_beam_size, enc_states.size(1), enc_states.size(2)).contiguous().detach()
             beam_article_inds = article_inds.expand(curr_beam_size, article_inds.size(1)).detach()
 
@@ -379,7 +379,7 @@ class PointerAttentionDecoder(Module):
             # does bulk of the beam search
             # decoded_outputs --> list of all ouputs terminated with stop tokens and of minimal length
             all_hyps, decode_inds, decoded_outputs, init_h, init_c = self.getOverallTopk(vocab_probs, next_h, next_c, all_hyps, decoded_outputs)
-
+            print("all_hyps", len(all_hyps), "decoded outputs", len(decoded_outputs))
             # convert OOV words to unk tokens for lookup
             decode_inds.masked_fill_((decode_inds > self.vocab_size), self.unk_id)
             decode_inds = decode_inds.t()
