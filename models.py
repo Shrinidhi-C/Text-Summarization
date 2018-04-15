@@ -346,7 +346,7 @@ class PointerAttentionDecoder(Module):
                 next_inp.append(h.full_prediction[-1])
                 next_h.append(h._h.data)
                 next_c.append(h._c.data)
-            if len(new_beam) >= self.beam_size:
+            if len(new_beam) >= self.beam_size or len(results) == self.beam_size:
                 break
         assert len(new_beam) >= 1, 'Non-existent beam'
         return new_beam, torch.LongTensor([next_inp]), results, torch.cat(next_h, 0), torch.cat(next_c, 0)
@@ -359,13 +359,15 @@ class PointerAttentionDecoder(Module):
         enc_mask -> mask indicating location of PAD in encoder input
         article_inds -> modified encoder input with temporary OOV ids for each OOV token
         """
-        _input = Variable(torch.LongTensor([[self.start_id]]).cuda(), volatile=True)
+        _input = Variable(torch.LongTensor([[self.start_id]]).cuda(), volatile=Tru
         init_state = enc_final_state[0].unsqueeze(0),enc_final_state[1].unsqueeze(0)
-        decoded_outputs = []
+        # decoded outputs :  will contain finished hypotheses (those that have emitted the [STOP] token)
+        decoded_outputs = [] 
         # all_hyps --> list of current beam hypothesis. start with base initial hypothesis
         all_hyps = [Hypothesis([self.start_id], None, None, 0)]
         # start decoding
-        for _step in range(self.max_decode_steps):
+        # for _step in range(self.max_decode_steps):
+        while steps < self.max_decode_steps and len(decoded_outputs) < self.beam_size:
             # ater first step, input is of batch_size=curr_beam_size
             # curr_beam_size <= self.beam_size due to pruning of beams that have terminated
             # adjust enc_states and init_state accordingly
