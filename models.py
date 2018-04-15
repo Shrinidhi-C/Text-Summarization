@@ -359,7 +359,7 @@ class PointerAttentionDecoder(Module):
         enc_mask -> mask indicating location of PAD in encoder input
         article_inds -> modified encoder input with temporary OOV ids for each OOV token
         """
-        _input = Variable(torch.LongTensor([[self.start_id]]).cuda(), volatile=Tru
+        _input = Variable(torch.LongTensor([[self.start_id]]).cuda(), volatile=True)
         init_state = enc_final_state[0].unsqueeze(0),enc_final_state[1].unsqueeze(0)
         # decoded outputs :  will contain finished hypotheses (those that have emitted the [STOP] token)
         decoded_outputs = [] 
