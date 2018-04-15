@@ -49,7 +49,7 @@ def evalModel(model):
     print '\n\n'
     print '*'*30, ' MODEL EVALUATION ', '*'*30
     # Get one eval sample for testing
-    _article, _revArticle,  _extArticle, max_article_oov, article_oov, article_string, abs_string = dl.getEvalBatch()
+    _article, _revArticle,  _extArticle, max_article_oov, article_oov, article_string, abs_string = dl.getEvalSample()
     _article = Variable(_article.cuda(), volatile=True)
     _extArticle = Variable(_extArticle.cuda(), volatile=True)
     _revArticle = Variable(_revArticle.cuda(), volatile=True)

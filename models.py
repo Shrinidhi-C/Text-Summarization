@@ -99,7 +99,7 @@ class Encoder(Module):
                 for k in range(int(np.log2(j)) + 1):
                     context = context + lstm_hidden[j-2**k][0]
             #forward pass into the encoder
-#             print("input dim: {}, hidden_length: {}, context_len: {}".format(input_embeds[j].dim(), self.hidden[0].dim(), context.dim()))
+            #print("input dim: {}, hidden_length: {}, context_len: {}".format(input_embeds[j].dim(), self.hidden[0].dim(), context.dim()))
             #print("##############", embed_fwd[:,j,:])
             out, self.hidden = self.fwd_rnn(embed_fwd[:,j,:].contiguous().view(batch_size,1, -1), (context, self.hidden[1]) )
             lstm_out[:,j,:] = out
@@ -402,6 +402,7 @@ class SummaryNet(Module):
             enc_input, rev_enc_input, article_inds = _input
             enc_states, enc_hn, enc_cn, enc_mask = self.encoder(enc_input, rev_enc_input)
             model_summary = self.pointerDecoder(enc_states, (enc_hn, enc_cn), enc_mask, None, article_inds, targets=None, decode=True)
+            print("Length of summary:", len(model_summary))
             return model_summary
         else:
         # train code

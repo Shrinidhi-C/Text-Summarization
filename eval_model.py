@@ -129,7 +129,7 @@ for _ in tqdm(range(opt.num_eval)):
         abs_string = 'Fresh Article : **No abstract available**'
     else:
     # pull random test sample
-        data_batch = dl.getEvalSample()
+        # data_batch = dl.getEvalSample()
         _article, _revArticle,  _extArticle, max_article_oov, article_oov, article_string, abs_string = dl.getEvalSample()
 
     _article = Variable(_article.cuda(), volatile=True)
