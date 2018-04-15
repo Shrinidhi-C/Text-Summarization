@@ -188,8 +188,8 @@ class PointerAttentionDecoder(Module):
 
     def forward(self, enc_states, enc_final_state, enc_mask, _input, article_inds, targets, decode=False):
         """
-        enc_states -> output states of encoder
-        enc_final_state -> final output of encoder
+        enc_states -> output states of encoder for each step
+        enc_final_state -> final output of encoder (h_n,c_n) pair
         enc_mask -> mask indicating location of PAD in encoder input
         _input -> decoder inputs
         article_inds -> modified encoder input with temporary OOV ids for each OOV token
@@ -353,6 +353,12 @@ class PointerAttentionDecoder(Module):
 
     # Beam Search Decoding
     def decode(self, enc_states, enc_final_state, enc_mask, article_inds):
+        """
+        enc_states -> output states of encoder for each step
+        enc_final_state -> final output of encoder (h_n,c_n) pair
+        enc_mask -> mask indicating location of PAD in encoder input
+        article_inds -> modified encoder input with temporary OOV ids for each OOV token
+        """
         _input = Variable(torch.LongTensor([[self.start_id]]).cuda(), volatile=True)
         init_state = enc_final_state[0].unsqueeze(0),enc_final_state[1].unsqueeze(0)
         decoded_outputs = []
@@ -364,6 +370,7 @@ class PointerAttentionDecoder(Module):
             # curr_beam_size <= self.beam_size due to pruning of beams that have terminated
             # adjust enc_states and init_state accordingly
             curr_beam_size = _input.size(0)
+            print(curr_beam_size)
             beam_enc_states = enc_states.expand(curr_beam_size, enc_states.size(1), enc_states.size(2)).contiguous().detach()
             beam_article_inds = article_inds.expand(curr_beam_size, article_inds.size(1)).detach()
 
@@ -380,6 +387,7 @@ class PointerAttentionDecoder(Module):
             init_state = (Variable(init_h.unsqueeze(0), volatile=True), Variable(init_c.unsqueeze(0), volatile=True))
 
         non_terminal_output = [item.full_prediction for item in all_hyps]
+        print(len(decoded_outputs), len(non_terminal_output))
         all_outputs = decoded_outputs + non_terminal_output
         return all_outputs
 
