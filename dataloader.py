@@ -189,15 +189,14 @@ class dataloader():
 
 	def getEvalBatch(self, num_samples=1):
 		"""
-		select first sample for eval
-		TODO : DO random here.t
+		select first sample for eval. Redundant at the moment
 		"""		
-		data = [self.test_data[random.randint(1,101)] for i in range(num_samples)]
+		data = [self.test_data[i] for i in range(num_samples)]
 		batchData = self.evalPreproc(data[0])
 		return batchData
 
 	def evalPreproc(self, sample):
-		# sample length = 1
+		# PreProcess one sample at a time
 		# limit max article size to 400 tokens
 		# TODO: Kinda strange why say Batch in all when supports only one sample
 		extIntArticles, intRevArticles = [], []
@@ -224,6 +223,7 @@ class dataloader():
 		return batchArticles, batchRevArticles, batchExtArticles, max_article_oov, article_oov, sample['article'], sample['abstract']
 
 	def getEvalSample(self, index=None):
+		"Taking a Sample at random or from an index."
 		if index is None:
 			rand_index = np.random.randint(0, self.testSamples-1)
 			data = self.test_data[rand_index]
@@ -235,7 +235,7 @@ class dataloader():
 
 	def getInputTextSample(self, tokenized_text):
 		"""
-		Used in Evaluating phase for testing out Fresh Articles.
+		Used in Evaluating phase for testing out FRESH Articles not in test set.
 		"""
 		extIntArticles, intRevArticles = [], []
 		max_article_oov = 0

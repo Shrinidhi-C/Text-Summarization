@@ -10,8 +10,10 @@ from tqdm import tqdm
 import dataloader
 from visdom import Visdom
 from nltk.tokenize import word_tokenize
+from PyRouge.pyrouge import Rouge
 
 parser = argparse.ArgumentParser()
+r = Rouge()
 
 parser.add_argument("--train-file", dest="train_file", help="Path to train datafile", default='finished_files/train.bin', type=str)
 parser.add_argument("--test-file", dest="test_file", help="Path to test/eval datafile", default='finished_files/test.bin', type=str)
@@ -19,8 +21,8 @@ parser.add_argument("--vocab-file", dest="vocab_file", help="Path to vocabulary 
 
 parser.add_argument("--max-abstract-size", dest="max_abstract_size", help="Maximum size of abstract for decoder input", default=110, type=int)
 parser.add_argument("--max-article-size", dest="max_article_size", help="Maximum size of article for encoder input", default=300, type=int)
-parser.add_argument("--batch-size", dest="batchSize", help="Mini-batch size", default=32, type=int)
-parser.add_argument("--embed-size", dest="embedSize", help="Size of word embedding", default=300, type=int)
+parser.add_argument("--batch-size", dest="batchSize", help="Mini-batch size", default=16, type=int)
+parser.add_argument("--embed-size", dest="embedSize", help="Size of word embedding", default=256, type=int)
 parser.add_argument("--hidden-size", dest="hiddenSize", help="Size of hidden to model", default=128, type=int)
 
 parser.add_argument("--lambda", dest="lmbda", help="Hyperparameter for auxillary cost", default=1, type=float)
@@ -33,6 +35,7 @@ parser.add_argument("--print-ground-truth", dest="print_ground_truth", help="Pri
 parser.add_argument("--load-model", dest="load_model", help="Directory from which to load trained models", default=None, type=str)
 parser.add_argument("--article", dest="article_path", help="Path to article text file", default=None, type=str)
 parser.add_argument("--num-eval", dest="num_eval", help="num of times to evaluate", default = 10, type=int)
+parser.add_argument("--rouge", dest="roug", help="OnlyRouge", default=False, type=bool)
 # Note that the parameters of the saved model should match the ones passed.
 opt = parser.parse_args()
 vis = Visdom()
@@ -44,22 +47,33 @@ def displayOutput(all_summaries, article, abstract, article_oov, show_ground_tru
     """
     Utility code for displaying generated abstract/multiple abstracts from beam search
     """
-    print '*' * 80
-    print '\n'
-    if show_ground_truth:
+    if not opt.roug:
+        print '*' * 80+'\n'
+    g_precision, g_recall, g_f_score, num = 0, 0, 0, 0
+    if show_ground_truth and not opt.roug:
         print 'ARTICLE TEXT : \n', article
         print 'ACTUAL ABSTRACT : \n', abstract
     for i, summary in enumerate(all_summaries):
         # generated_summary = ' '.join([dl.id2word[ind] if ind<=dl.vocabSize else article_oov[ind % dl.vocabSize] for ind in summary])
         try:
             generated_summary = ' '.join([dl.id2word[ind] if ind<=dl.vocabSize else article_oov[ind % dl.vocabSize - 1] for ind in summary])
-            print 'GENERATED ABSTRACT #%d : \n' %(i+1), generated_summary
+            [precision, recall, f_score] = r.rouge_l([abstract], [generated_summary])
+            if not opt.roug:
+                print 'GENERATED ABSTRACT #%d : \n' %(i+1), generated_summary
+                print("Precision(l) is :"+str(precision)+"\nRecall is :"+str(recall)+"\nF Score is :"+str(f_score))
+            g_precision += precision
+            g_recall += recall
+            g_f_score += f_score
+            num += 1
+            #[precision, recall, f_score] = r.rouge_2([abstract], [generated_summary])
+            #print("Precision(2) is :"+str(precision)+"\nRecall is :"+str(recall)+"\nF Score is :"+str(f_score))
         except:
             print '^^^^^^error in index^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^', '\n vocab len :', dl.vocabSize
             print '\n OOV length', len(article_oov), '\n', [ind for ind in summary]
             pass
-    print '*' * 80
-    return
+    if not opt.roug:
+        print '*' * 80
+    return g_precision/num, g_recall/num, g_f_score/num
 
 # Utility code to save model to disk # Not needed here.
 # def save_model(net, optimizer,all_summaries, article_string, abs_string):
@@ -68,7 +82,7 @@ def displayOutput(all_summaries, article, abstract, article_oov, show_ground_tru
 #     print 'Saving Model to : ', opt.save_dir
 #     save_name = opt.save_dir + 'savedModel_E%d_%d.pth' % (dl.epoch, dl.iterInd)
 #     torch.save(save_dict, save_name)
-#     print '-' * 60  
+#     print '-' * 60
 #     return
 
 assert opt.trunc_vocab <= 50000, 'Invalid value for --truncate-vocab'
@@ -79,7 +93,7 @@ with open(opt.vocab_file) as f:
 vocab += ['<unk>', '<go>', '<end>', '<s>', '</s>']                                  # add special token to vocab to bring total count to 50k
 
 #Create an object of the Dataloader class.
-dl = dataloader.dataloader(opt.batchSize, None, vocab, opt.train_file, opt.test_file, 
+dl = dataloader.dataloader(opt.batchSize, None, vocab, opt.train_file, opt.test_file,
                           opt.max_article_size, opt.max_abstract_size, test_mode=True)
 
 
@@ -94,7 +108,7 @@ print 'Loading weights from file...might take a minute...'
 saved_file = torch.load(opt.load_model)
 net.load_state_dict(saved_file['model'])
 print '\n','*'*30, 'LOADED WEIGHTS FROM MODEL FILE : %s' %opt.load_model,'*'*30
-    
+
 ############################################################################################
 # Set model to eval mode
 ############################################################################################
@@ -102,7 +116,9 @@ net.eval()
 print '\nSetting Model to Evaluation Mode\n'
 
 # Run num_eval times to get num_eval random test data samples for output
-for _ in range(opt.num_eval):
+g_precision, g_recall, g_f_score = 0, 0, 0
+
+for _ in tqdm(range(opt.num_eval)):
     # If article file provided
     if opt.article_path is not None and os.path.isfile(opt.article_path):
         with open(opt.article_path,'r') as f:
@@ -113,14 +129,19 @@ for _ in range(opt.num_eval):
         abs_string = 'Fresh Article : **No abstract available**'
     else:
     # pull random test sample
-        data_batch = dl.getEvalSample()
+        # data_batch = dl.getEvalSample()
         _article, _revArticle,  _extArticle, max_article_oov, article_oov, article_string, abs_string = dl.getEvalSample()
 
     _article = Variable(_article.cuda(), volatile=True)
     _extArticle = Variable(_extArticle.cuda(), volatile=True)
-    _revArticle = Variable(_revArticle.cuda(), volatile=True)    
+    _revArticle = Variable(_revArticle.cuda(), volatile=True)
     all_summaries = net((_article, _revArticle, _extArticle), max_article_oov, decode_flag=True)
 
-    displayOutput(all_summaries, article_string, abs_string, article_oov, show_ground_truth=opt.print_ground_truth)
+    [precision, recall, f_score] = displayOutput(all_summaries, article_string, abs_string, article_oov, show_ground_truth=opt.print_ground_truth)
+    g_precision += precision
+    g_recall += recall
+    g_f_score += f_score
+    if not opt.roug:
+        print("Precision is :"+str(precision)+"\nRecall is :"+str(recall)+"\nF Score is :"+str(f_score))
 
-# TODO: Evalute for ROUGE Scores
+print("Global : Precision is :"+str(g_precision/opt.num_eval)+"\nRecall is :"+str(g_recall/opt.num_eval)+"\nF Score is :"+str(g_f_score/opt.num_eval))
