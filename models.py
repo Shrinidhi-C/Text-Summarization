@@ -388,7 +388,7 @@ class PointerAttentionDecoder(Module):
             decode_inds = decode_inds.t()
             _input = Variable(decode_inds.cuda(), volatile=True)
             init_state = (Variable(init_h.unsqueeze(0), volatile=True), Variable(init_c.unsqueeze(0), volatile=True))
-            step += 1
+            steps += 1
 
         non_terminal_output = [item.full_prediction for item in all_hyps]
         print(len(decoded_outputs), len(non_terminal_output))
