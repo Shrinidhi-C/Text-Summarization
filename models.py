@@ -125,7 +125,7 @@ class Encoder(Module):
             out, self.hidden_rev = self.bkwd_rnn(embed_rev[:,j,:].contiguous().view(batch_size,1, -1), (context, self.hidden_rev[1]) )
             lstm_out_rev[:,j,:] = out
             lstm_hidden[j] = self.hidden_rev
-        
+
         bkwd_out = lstm_out_rev
         bkwd_state = self.hidden_rev
         # bkwd_out, bkwd_state = self.bkwd_rnn(embed_rev)
@@ -346,7 +346,7 @@ class PointerAttentionDecoder(Module):
                 next_inp.append(h.full_prediction[-1])
                 next_h.append(h._h.data)
                 next_c.append(h._c.data)
-            if len(new_beam) >= self.beam_size or len(results) == self.beam_size:
+            if len(new_beam) >= self.beam_size:
                 break
         assert len(new_beam) >= 1, 'Non-existent beam'
         return new_beam, torch.LongTensor([next_inp]), results, torch.cat(next_h, 0), torch.cat(next_c, 0)
@@ -362,7 +362,7 @@ class PointerAttentionDecoder(Module):
         _input = Variable(torch.LongTensor([[self.start_id]]).cuda(), volatile=True)
         init_state = enc_final_state[0].unsqueeze(0),enc_final_state[1].unsqueeze(0)
         # decoded outputs :  will contain finished hypotheses (those that have emitted the [STOP] token)
-        decoded_outputs = [] 
+        decoded_outputs = []
         # all_hyps --> list of current beam hypothesis. start with base initial hypothesis
         all_hyps = [Hypothesis([self.start_id], None, None, 0)]
         # start decoding
@@ -382,7 +382,7 @@ class PointerAttentionDecoder(Module):
             # does bulk of the beam search
             # decoded_outputs --> list of all ouputs terminated with stop tokens and of minimal length
             all_hyps, decode_inds, decoded_outputs, init_h, init_c = self.getOverallTopk(vocab_probs, next_h, next_c, all_hyps, decoded_outputs)
-            print("all_hyps", len(all_hyps), "decoded outputs", len(decoded_outputs))
+            #print("all_hyps", len(all_hyps), "decoded outputs", len(decoded_outputs))
             # convert OOV words to unk tokens for lookup
             decode_inds.masked_fill_((decode_inds > self.vocab_size), self.unk_id)
             decode_inds = decode_inds.t()
@@ -391,7 +391,7 @@ class PointerAttentionDecoder(Module):
             steps += 1
 
         non_terminal_output = [item.full_prediction for item in all_hyps]
-        print(len(decoded_outputs), len(non_terminal_output))
+        #print(len(decoded_outputs), len(non_terminal_output))
         all_outputs = decoded_outputs + non_terminal_output
         return all_outputs
 
@@ -414,7 +414,7 @@ class SummaryNet(Module):
             enc_input, rev_enc_input, article_inds = _input
             enc_states, enc_hn, enc_cn, enc_mask = self.encoder(enc_input, rev_enc_input)
             model_summary = self.pointerDecoder(enc_states, (enc_hn, enc_cn), enc_mask, None, article_inds, targets=None, decode=True)
-            print("Length of summary:", len(model_summary))
+            #print("Length of summary:", len(model_summary))
             return model_summary
         else:
         # train code
