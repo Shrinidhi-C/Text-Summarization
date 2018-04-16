@@ -130,15 +130,29 @@ class Encoder(Module):
         bkwd_state = self.hidden_rev
         # bkwd_out, bkwd_state = self.bkwd_rnn(embed_rev)
         #print("$$$$$$$$",fwd_out.size(), bkwd_out.size())
-        hidden_cat = torch.cat((fwd_out, bkwd_out), 2)
-
+        # hidden_cat = torch.cat((fwd_out, bkwd_out), 2)
+        stat = Variable(torch.zeros(batch_size, max_len, self.hidden_size*2).cuda())
+        idx = 0
+        for i in range(batch_size):
+            for j in range(max_len):
+                if(mask[i,j] == 0):
+                    idx += 1
+        print(idx)
+        for i in range(batch_size):
+            for j in range(max_len):
+                if(mask[i,j] == 0):
+                    stat[i,j,:] = torch.cat((fwd_out[i,j,:],bkwd_out[i,idx-j-1,:]))
+        print(fwd_out, bkwd_out, stat)
         # inverse of mask
-        inv_mask = mask.eq(0).unsqueeze(2).expand(batch_size, max_len, self.hidden_size * 2).float().detach()
-        hidden_out = hidden_cat * inv_mask
+        # inv_mask_fwd = mask.eq(0).unsqueeze(2).expand(batch_size, max_len, self.hidden_size).float().detach()
+        # inv_mask_rev= mask.eq(0).unsqueeze(2).expand(batch_size, max_len, self.hidden_size).float().detach()
+        # fwd_out_masked = fwd_out*inv_mask_fwd
+        # bkwd_out_masked = bkwd_out*inv_mask_rev
+        # hidden_out = hidden_cat * inv_mask
         final_hidd_proj = self.output_hproj(torch.cat((fwd_state[0].squeeze(0), bkwd_state[0].squeeze(0)), 1))
         final_cell_proj = self.output_cproj(torch.cat((fwd_state[1].squeeze(0), bkwd_state[1].squeeze(0)), 1))
 
-        return hidden_out, final_hidd_proj, final_cell_proj, mask
+        return stat, final_hidd_proj, final_cell_proj, mask
 
 # TODO Enhancement: Project input embedding with previous context vector for current input
 class PointerAttentionDecoder(Module):
