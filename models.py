@@ -132,17 +132,20 @@ class Encoder(Module):
         #print("$$$$$$$$",fwd_out.size(), bkwd_out.size())
         # hidden_cat = torch.cat((fwd_out, bkwd_out), 2)
         stat = Variable(torch.zeros(batch_size, max_len, self.hidden_size*2).cuda())
-        idx = 0
+        mas = mask.data
+        #print(mas)
+        #print(type(mas[0,0]))
         for i in range(batch_size):
+            idx = 0
             for j in range(max_len):
-                if(mask[i,j] == 0):
+                if(mas[i,j]==0):
                     idx += 1
-        print(idx)
-        for i in range(batch_size):
+           # print(idx)
             for j in range(max_len):
-                if(mask[i,j] == 0):
-                    stat[i,j,:] = torch.cat((fwd_out[i,j,:],bkwd_out[i,idx-j-1,:]))
-        print(fwd_out, bkwd_out, stat)
+                if(mas[i,j]==0):
+                    stat[i,j,:] = torch.cat((fwd_out[i,j,:],bkwd_out[i,idx-j-1,:]),)
+        #print("fwd", fwd_out, "bkwd", bkwd_out,"stat", stat)
+        #raw_input()
         # inverse of mask
         # inv_mask_fwd = mask.eq(0).unsqueeze(2).expand(batch_size, max_len, self.hidden_size).float().detach()
         # inv_mask_rev= mask.eq(0).unsqueeze(2).expand(batch_size, max_len, self.hidden_size).float().detach()
