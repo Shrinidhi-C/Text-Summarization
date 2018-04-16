@@ -367,6 +367,7 @@ class PointerAttentionDecoder(Module):
         all_hyps = [Hypothesis([self.start_id], None, None, 0)]
         # start decoding
         # for _step in range(self.max_decode_steps):
+        steps = 0
         while steps < self.max_decode_steps and len(decoded_outputs) < self.beam_size:
             # ater first step, input is of batch_size=curr_beam_size
             # curr_beam_size <= self.beam_size due to pruning of beams that have terminated
@@ -387,6 +388,7 @@ class PointerAttentionDecoder(Module):
             decode_inds = decode_inds.t()
             _input = Variable(decode_inds.cuda(), volatile=True)
             init_state = (Variable(init_h.unsqueeze(0), volatile=True), Variable(init_c.unsqueeze(0), volatile=True))
+            step += 1
 
         non_terminal_output = [item.full_prediction for item in all_hyps]
         print(len(decoded_outputs), len(non_terminal_output))
