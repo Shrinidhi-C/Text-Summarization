@@ -1,4 +1,9 @@
 finished_files/*
 new_test
 *.pyc
+ROUGE-1.5.5.pl
+data/
+new-saves/
+pyrouge/
+rou.py
 Saved-Models/

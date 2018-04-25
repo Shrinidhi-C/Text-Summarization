@@ -1,4 +1,5 @@
 import torch
+import string
 from torch.autograd import Variable
 import cPickle as pickle
 import argparse
@@ -36,20 +37,42 @@ parser.add_argument("--load-model", dest="load_model", help="Directory from whic
 parser.add_argument("--article", dest="article_path", help="Path to article text file", default=None, type=str)
 parser.add_argument("--num-eval", dest="num_eval", help="num of times to evaluate", default = 10, type=int)
 parser.add_argument("--rouge", dest="roug", help="OnlyRouge", default=False, type=bool)
+parser.add_argument("--rouge-dir", dest="rouge_dir", help = 'directory to output summaires', default = 'summaries', type=str)
 # Note that the parameters of the saved model should match the ones passed.
 opt = parser.parse_args()
 vis = Visdom()
 
 assert opt.load_model is not None and os.path.isfile(opt.vocab_file), 'Invalid Path to trained model file'
 
+def writetodir(summary, dir):
+    a = string.replace(summary,'</s>','\n')
+    b = string.replace(a, '<s>', '')
+    c = string.replace(b, '  ', ' ')
+    dir = opt.rouge_dir + dir
+    file_object  = open(dir,'w')
+    file_object.write(c)
+    f.close()
 
-def displayOutput(all_summaries, article, abstract, article_oov, show_ground_truth=False):
+def writetodir2(summary, dir):
+    summary = string.replace(summary,'<go>','')
+    summary = string.replace(summary,'<end>','')    
+    a = string.replace(summary,'</s>','\n')
+    b = string.replace(a, '<s>', '')
+    c = string.replace(b, '  ', ' ')
+    dir = opt.rouge_dir + dir
+    file_object  = open(dir,'w')
+    file_object.write(c)
+    f.close()
+
+def displayOutput(all_summaries, article, abstract, article_oov, sumnum, show_ground_truth=False):
     """
     Utility code for displaying generated abstract/multiple abstracts from beam search
     """
     if not opt.roug:
         print '*' * 80+'\n'
     g_precision, g_recall, g_f_score, num = 0, 0, 0, 0
+    path_golden = 'golden/residual.' + str(sumnum) + '.txt'
+    writetodir(abstract,path_golden)
     if show_ground_truth and not opt.roug:
         print 'ARTICLE TEXT : \n', article
         print 'ACTUAL ABSTRACT : \n', abstract
@@ -57,6 +80,8 @@ def displayOutput(all_summaries, article, abstract, article_oov, show_ground_tru
         # generated_summary = ' '.join([dl.id2word[ind] if ind<=dl.vocabSize else article_oov[ind % dl.vocabSize] for ind in summary])
         try:
             generated_summary = ' '.join([dl.id2word[ind] if ind<=dl.vocabSize else article_oov[ind % dl.vocabSize - 1] for ind in summary])
+            path = 'mysumm/residual.' + chr(ord('A')+i) + '.' + str(sumnum) + '.txt' 
+            writetodir2(generated_summary, path)
             [precision, recall, f_score] = r.rouge_l([abstract], [generated_summary])
             if not opt.roug:
                 print 'GENERATED ABSTRACT #%d : \n' %(i+1), generated_summary
@@ -118,7 +143,7 @@ print '\nSetting Model to Evaluation Mode\n'
 # Run num_eval times to get num_eval random test data samples for output
 g_precision, g_recall, g_f_score = 0, 0, 0
 
-for _ in tqdm(range(opt.num_eval)):
+for sumnum in tqdm(range(opt.num_eval)):
     # If article file provided
     if opt.article_path is not None and os.path.isfile(opt.article_path):
         with open(opt.article_path,'r') as f:
@@ -137,7 +162,7 @@ for _ in tqdm(range(opt.num_eval)):
     _revArticle = Variable(_revArticle.cuda(), volatile=True)
     all_summaries = net((_article, _revArticle, _extArticle), max_article_oov, decode_flag=True)
 
-    [precision, recall, f_score] = displayOutput(all_summaries, article_string, abs_string, article_oov, show_ground_truth=opt.print_ground_truth)
+    [precision, recall, f_score] = displayOutput(all_summaries, article_string, abs_string, article_oov, sumnum, show_ground_truth=opt.print_ground_truth)
     g_precision += precision
     g_recall += recall
     g_f_score += f_score
