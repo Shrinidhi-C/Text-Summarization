@@ -1,9 +1,8 @@
 # Text-Summarization
 
-Text Summarization using Residual Logarithmic LSTMS. The model also uses Pointer Generator Network, Coverage, Reinforcement based learning and Attention Mechanism.
+Abractive Text Summarization using Residual Logarithmic LSTMS. The model also uses Pointer Generator Network, Coverage and Attention Mechanism.Residual Logarithmic LSTMs aim to do long document summarization by trying to solve vanishing gradient problems in longer sequences using residual connections.
 
-This is based on Pytorch implementation of [Get To The Point: Summarization with Pointer-Generator Networks by See et. al.](https://arxiv.org/abs/1704.04368), modified from [here](https://github.com/hashbangCoder/Text-Summarization)
-
+This is based on Pytorch implementation of [Get To The Point: Summarization with Pointer-Generator Networks by See et. al.](https://arxiv.org/abs/1704.04368)
 
 ## Dependencies
 You require :
